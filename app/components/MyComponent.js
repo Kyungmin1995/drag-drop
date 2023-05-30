@@ -180,7 +180,7 @@ const App = () => {
 
     const res = await axios.post("/api/update", updatedList);
     try {
-      console.log(res.data, "배열수정");
+      console.log(res.data, "res");
       // setList(updatedList);
     } catch (err) {
       console.log(err.response);
