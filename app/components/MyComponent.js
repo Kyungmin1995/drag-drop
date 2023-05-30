@@ -22,6 +22,8 @@ const App = () => {
     title_id: "",
     menu: false,
     menu_id: "",
+    labelUp: false,
+    labelUpId: "",
   });
   const [list, setList] = useState([
     {
@@ -48,6 +50,7 @@ const App = () => {
     const res = await axios.get("/api/list");
     try {
       setList(res.data.category);
+      console.log(res.data);
     } catch (err) {
       console.log(err.response);
     }
@@ -217,6 +220,9 @@ const App = () => {
     setRender(true);
   }, [cardSwitch, write.clear, updateRender]);
 
+  useEffect(() => {
+    console.log(cardSwitch, "ddd");
+  }, [cardSwitch]);
   return (
     <>
       <div
@@ -413,6 +419,41 @@ const App = () => {
                                     subClick(idx, index, _id);
                                   }}
                                 >
+                                  {subItem.labelList !== undefined ? (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "5px",
+                                        marginBottom: "5px",
+                                      }}
+                                    >
+                                      {subItem.labelList.map((a) => (
+                                        <div
+                                          key={a.idx}
+                                          data-id={a.idx}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setCardSwitch((state) => ({
+                                              ...state,
+                                              labelUp: true,
+                                              labelUpId: a.idx,
+                                            }));
+                                          }}
+                                          style={{
+                                            background: a.color,
+                                            minWidth: "40px",
+                                            minHeight: "15px",
+                                            borderRadius: "3px",
+                                            padding: "2px 5px",
+                                          }}
+                                        >
+                                          {a.text}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+
                                   {subItem.subContent}
                                 </div>
                                 {provided.placeholder}
