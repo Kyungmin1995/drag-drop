@@ -51,7 +51,7 @@ const App = () => {
     } catch (err) {
       console.log(err.response);
     }
-  }, [list, updateRender]);
+  }, [list]);
 
   //부모카드추가
   const pushList = useCallback(async () => {
@@ -178,10 +178,10 @@ const App = () => {
       destList.sub.splice(destination.index, 0, removed);
     }
 
+    setList(updatedList);
     const res = await axios.post("/api/update", updatedList);
     try {
-      console.log(res.data, "res");
-      // setList(updatedList);
+      console.log(res.data, "배열수정");
     } catch (err) {
       console.log(err.response);
     }
