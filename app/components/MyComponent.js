@@ -9,7 +9,12 @@ import { CiMenuKebab } from "react-icons/ci";
 const App = () => {
   const [Render, setRender] = useState(false);
   const [updateRender, setUpdateRender] = useState(false);
+  const scrollRef = useRef(null);
+  const [isDrag, setIsDrag] = useState(false);
+  const [startX, setStartX] = useState();
+
   const subInputRef = useRef(null);
+
   const titleRef = useRef(null);
   const [cardSwitch, setCardSwitch] = useState({
     modal: false,
@@ -24,12 +29,13 @@ const App = () => {
     menu_id: "",
     labelUp: false,
     labelUpId: "",
+    dragMatch: "",
   });
   const [list, setList] = useState([
     {
       _id: "",
       title: "",
-      sub: [{ subContent: "" }],
+      sub: [],
       description: "",
     },
   ]);
@@ -50,7 +56,6 @@ const App = () => {
     const res = await axios.get("/api/list");
     try {
       setList(res.data.category);
-      console.log(res.data);
     } catch (err) {
       console.log(err.response);
     }
@@ -65,7 +70,6 @@ const App = () => {
     setWrite((state) => ({ ...state, clear: false }));
 
     try {
-      console.log(res.data);
     } catch (err) {
       console.log(err.response);
     } finally {
@@ -189,6 +193,21 @@ const App = () => {
       console.log(err.response);
     }
   };
+
+  const onDragUpdate = (update) => {
+    const { destination } = update;
+    // 닿는 요소의 정보(destination)를 활용하여 처리
+    if (destination) {
+      const { droppableId, index } = destination;
+      // 닿는 요소의 droppableId와 index 등을 활용하여 처리 로직 수행
+      console.log(`닿은 요소: droppableId - ${droppableId}, index - ${index}`);
+      setCardSwitch((state) => ({
+        ...state,
+        dragMatch: droppableId,
+      }));
+    }
+  };
+
   const subClick = useCallback(
     (idx, index, _id) => {
       setCardSwitch((state) => ({
@@ -220,332 +239,393 @@ const App = () => {
     setRender(true);
   }, [cardSwitch, write.clear, updateRender]);
 
-  useEffect(() => {
-    console.log(cardSwitch, "ddd");
-  }, [cardSwitch]);
+  const onDragStart = (e) => {
+    e.preventDefault();
+    setIsDrag(true);
+    setStartX(e.pageX + scrollRef.current.scrollLeft);
+  };
+
+  const onDragEnd = () => setIsDrag(false);
+
+  const onDragMove = (e) => {
+    if (isDrag) {
+      // console.log(startX, e.pageX);
+      scrollRef.current.scrollLeft = startX - e.pageX;
+    }
+  };
+  const throttle = (func, ms) => {
+    let throttled = false;
+    return (...args) => {
+      if (!throttled) {
+        throttled = true;
+        setTimeout(() => {
+          func(...args);
+          throttled = false;
+        }, ms);
+      }
+    };
+  };
+  const delay = 10;
+  const onThrottleDragMove = throttle(onDragMove, delay);
   return (
     <>
-      <div
-        onClick={() => {
-          setCardSwitch((state) => ({
-            ...state,
-            tab: false,
-            edit: false,
-            menu: false,
-          }));
-        }}
-        style={{
-          display: "flex",
-
-          paddingTop: "50px",
-          display: "flex",
-        }}
-      >
-        {Render && (
-          <DragDropContext
-            onDragEnd={handleDragEnd}
-            onDragStart={() => {
+      {list[0].sub.length == 0 ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+          }}
+        >
+          <span className="spiner">
+            <span></span>
+            <span></span>
+          </span>
+        </div>
+      ) : (
+        <>
+          <div
+            onMouseDown={onDragStart}
+            onMouseMove={onThrottleDragMove}
+            onMouseUp={onDragEnd}
+            onMouseLeave={onDragEnd}
+            ref={scrollRef}
+            onClick={() => {
               setCardSwitch((state) => ({
                 ...state,
                 tab: false,
+                edit: false,
+                menu: false,
               }));
             }}
+            style={{
+              background: "#ddd",
+              overflowX: "auto",
+              height: "100vh",
+              cursor: isDrag ? "grab" : "pointer",
+            }}
           >
-            <div
-              style={{
-                display: "flex",
-                height: "100%",
-
-                width: "100%",
-              }}
-            >
-              {list.map((item, idx) => (
-                <Droppable droppableId={item._id} key={item._id}>
-                  {(provided) => (
-                    <div
-                      className="parent-list"
-                      onClick={(e) => {
-                        setCardSwitch((state) => ({
-                          ...state,
-                          edit: false,
-                        }));
-                      }}
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                    >
-                      {cardSwitch.edit && cardSwitch.title_id === item._id ? (
+            {Render && (
+              <DragDropContext
+                onDragEnd={handleDragEnd}
+                onDragUpdate={onDragUpdate}
+                onDragStart={() => {
+                  setCardSwitch((state) => ({
+                    ...state,
+                    tab: false,
+                  }));
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    maxHeight: "1080px",
+                    width: "100%",
+                  }}
+                >
+                  {list.map((item, idx) => (
+                    <Droppable droppableId={item._id} key={item._id}>
+                      {(provided) => (
                         <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            padding: " 0px 8px",
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
                           }}
+                          className={"parent-list"}
+                          onClick={(e) => {
+                            setCardSwitch((state) => ({
+                              ...state,
+                              edit: false,
+                            }));
+                          }}
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
                         >
-                          <input
-                            type="text"
-                            className="cardTitle"
-                            ref={titleRef}
-                            onKeyDown={(e) => {
-                              handleKeyPress(e, idx);
-                            }}
-                            value={list[idx].title}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            onChange={(e) =>
-                              setList((prevList) => {
-                                const newList = [...prevList]; // 이전 배열을 복사하여 새로운 배열 생성
-                                const updatedItem = {
-                                  ...newList[idx], // 이전 요소를 복사하여 새로운 요소 생성
-                                  title: e.target.value, // title 변경
-                                };
-                                newList[idx] = updatedItem; // 새로운 요소로 기존 요소 대체
-                                return newList;
-                              })
-                            }
-                          />
-                          <span
-                            style={{
-                              color: "#fff",
-                              fontSize: "20px",
-                              lineHeight: "10px",
-                            }}
-                            onClick={() => {
-                              updateTitle(idx);
-                            }}
-                          >
-                            <AiOutlineCheckCircle />
-                          </span>
-                          <span
-                            style={{
-                              color: "red",
-                              fontSize: "20px",
-                              lineHeight: "10px",
-                            }}
-                            onClick={() => {
-                              setCardSwitch((state) => ({
-                                ...state,
-                                edit: false,
-                              }));
-                            }}
-                          >
-                            <AiOutlineCloseCircle />
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ display: "flex" }}>
-                            <h3
-                              className="title"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCardSwitch((state) => ({
-                                  ...state,
-                                  edit: true,
-                                  tab_id: "",
-                                  menu_id: "",
-                                  title_id: item._id,
-                                }));
+                          {cardSwitch.edit &&
+                          cardSwitch.title_id === item._id ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: " 0px 8px",
                               }}
                             >
-                              {item.title}
-                            </h3>
-                            <div style={{ position: "relative" }}>
-                              <span
-                                className="menu"
+                              <input
+                                type="text"
+                                className="cardTitle"
+                                ref={titleRef}
+                                onKeyDown={(e) => {
+                                  handleKeyPress(e, idx);
+                                }}
+                                value={list[idx].title}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                }}
+                                onChange={(e) =>
+                                  setList((prevList) => {
+                                    const newList = [...prevList]; // 이전 배열을 복사하여 새로운 배열 생성
+                                    const updatedItem = {
+                                      ...newList[idx], // 이전 요소를 복사하여 새로운 요소 생성
+                                      title: e.target.value, // title 변경
+                                    };
+                                    newList[idx] = updatedItem; // 새로운 요소로 기존 요소 대체
+                                    return newList;
+                                  })
+                                }
+                              />
+                              <span
+                                style={{
+                                  color: "#fff",
+                                  fontSize: "20px",
+                                  lineHeight: "10px",
+                                }}
+                                onClick={() => {
+                                  updateTitle(idx);
+                                }}
+                              >
+                                <AiOutlineCheckCircle />
+                              </span>
+                              <span
+                                style={{
+                                  color: "red",
+                                  fontSize: "20px",
+                                  lineHeight: "10px",
+                                }}
+                                onClick={() => {
                                   setCardSwitch((state) => ({
                                     ...state,
-                                    menu: true,
-                                    menu_id: item._id,
-                                    tab_id: "",
+                                    edit: false,
                                   }));
                                 }}
                               >
-                                <CiMenuKebab style={{ color: "#fff" }} />
+                                <AiOutlineCloseCircle />
                               </span>
-                              {cardSwitch.menu &&
-                                cardSwitch.menu_id === item._id && (
-                                  <div className="container">
-                                    <div>List actions</div>
-                                    <div className="menuBar">
-                                      <div
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setCardSwitch((state) => ({
-                                            ...state,
-                                            tab: true,
-                                            tab_id: item._id,
-                                            menu: false,
-                                          }));
-                                        }}
-                                      >
-                                        Add card
-                                      </div>
-                                      {/* <div>Move card</div> */}
-                                      <div
-                                        onClick={() => {
-                                          deleteData(item._id, "card");
-                                        }}
-                                      >
-                                        Delete card
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
                             </div>
-                          </div>
-                        </>
-                      )}
-
-                      <div className="">
-                        {item.sub.map((subItem, index) => (
-                          <Draggable
-                            draggableId={subItem._id}
-                            index={index}
-                            key={subItem._id}
-                          >
-                            {(provided) => (
-                              <>
-                                <div
-                                  className="sub-item"
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  onClick={() => {
-                                    const _id = list[idx].sub[index]._id;
-                                    subClick(idx, index, _id);
+                          ) : (
+                            <>
+                              <div style={{ display: "flex" }}>
+                                <h3
+                                  className="title"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCardSwitch((state) => ({
+                                      ...state,
+                                      edit: true,
+                                      tab_id: "",
+                                      menu_id: "",
+                                      title_id: item._id,
+                                    }));
                                   }}
                                 >
-                                  {subItem.labelList !== undefined ? (
+                                  {item.title}
+                                </h3>
+                                <div style={{ position: "relative" }}>
+                                  <span
+                                    className="menu"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCardSwitch((state) => ({
+                                        ...state,
+                                        menu: true,
+                                        menu_id: item._id,
+                                        tab_id: "",
+                                      }));
+                                    }}
+                                  >
+                                    <CiMenuKebab style={{ color: "#fff" }} />
+                                  </span>
+                                  {cardSwitch.menu &&
+                                    cardSwitch.menu_id === item._id && (
+                                      <div className="container">
+                                        <div>List actions</div>
+                                        <div className="menuBar">
+                                          <div
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setCardSwitch((state) => ({
+                                                ...state,
+                                                tab: true,
+                                                tab_id: item._id,
+                                                menu: false,
+                                              }));
+                                            }}
+                                          >
+                                            Add card
+                                          </div>
+                                          {/* <div>Move card</div> */}
+                                          <div
+                                            onClick={() => {
+                                              deleteData(item._id, "card");
+                                            }}
+                                          >
+                                            Delete card
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          <div className="ddd">
+                            {item.sub.map((subItem, index) => (
+                              <Draggable
+                                draggableId={subItem._id}
+                                index={index}
+                                key={subItem._id}
+                              >
+                                {(provided) => (
+                                  <>
                                     <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "5px",
-                                        marginBottom: "5px",
+                                      className="sub-item"
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      onClick={() => {
+                                        const _id = list[idx].sub[index]._id;
+                                        subClick(idx, index, _id);
                                       }}
                                     >
-                                      {subItem.labelList.map((a) => (
+                                      {subItem.labelList !== undefined ? (
                                         <div
-                                          key={a.idx}
-                                          data-id={a.idx}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setCardSwitch((state) => ({
-                                              ...state,
-                                              labelUp: true,
-                                              labelUpId: a.idx,
-                                            }));
-                                          }}
                                           style={{
-                                            background: a.color,
-                                            minWidth: "40px",
-                                            minHeight: "15px",
-                                            borderRadius: "3px",
-                                            padding: "2px 5px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "5px",
+                                            marginBottom: "5px",
                                           }}
                                         >
-                                          {a.text}
+                                          {subItem.labelList.map((a) => (
+                                            <div
+                                              key={a.idx}
+                                              data-id={a.idx}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCardSwitch((state) => ({
+                                                  ...state,
+                                                  labelUp: true,
+                                                  labelUpId: a.idx,
+                                                }));
+                                              }}
+                                              style={{
+                                                background: a.color,
+                                                minWidth: "40px",
+                                                minHeight: "15px",
+                                                borderRadius: "3px",
+                                                padding: "2px 5px",
+                                                maxWidth: "80px",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                              }}
+                                            >
+                                              {a.text}
+                                            </div>
+                                          ))}
                                         </div>
-                                      ))}
+                                      ) : null}
+
+                                      {subItem.subContent}
                                     </div>
-                                  ) : null}
-
-                                  {subItem.subContent}
-                                </div>
-                                {provided.placeholder}
-                              </>
-                            )}
-                          </Draggable>
-                        ))}
-                      </div>
-
-                      {item._id === cardSwitch.tab_id && cardSwitch.tab ? (
-                        <>
-                          <div
-                            className="tabMenu"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <input
-                              type="text"
-                              ref={subInputRef}
-                              placeholder="입력해주세요"
-                              value={subCard.subContent}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                setSubCard((state) => ({
-                                  ...state,
-                                  subContent: e.target.value,
-                                }));
-                              }}
-                            />
+                                    {provided.placeholder}
+                                  </>
+                                )}
+                              </Draggable>
+                            ))}
                           </div>
-                          <div className="actionBox">
-                            <button
-                              className="clearbtn"
-                              onClick={() => {
-                                addSubCard(item, idx);
+
+                          {item._id === cardSwitch.tab_id && cardSwitch.tab ? (
+                            <>
+                              <div
+                                className="tabMenu"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <input
+                                  type="text"
+                                  ref={subInputRef}
+                                  placeholder="입력해주세요"
+                                  value={subCard.subContent}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    setSubCard((state) => ({
+                                      ...state,
+                                      subContent: e.target.value,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                              <div className="actionBox">
+                                <button
+                                  className="clearbtn"
+                                  onClick={() => {
+                                    addSubCard(item, idx);
+                                  }}
+                                >
+                                  Add
+                                </button>
+                                <button
+                                  className="closeBtn"
+                                  onClick={() => {
+                                    setCardSwitch((state) => ({
+                                      ...state,
+                                      tab: false,
+                                    }));
+                                  }}
+                                ></button>
+                              </div>
+                            </>
+                          ) : (
+                            <div
+                              className="addBtn"
+                              data-id={item._id}
+                              onClick={(e) => {
+                                subCardTab(e, item);
+                                console.log(idx, "dd");
                               }}
                             >
-                              Add
-                            </button>
-                            <button
-                              className="closeBtn"
-                              onClick={() => {
-                                setCardSwitch((state) => ({
-                                  ...state,
-                                  tab: false,
-                                }));
-                              }}
-                            ></button>
-                          </div>
-                        </>
-                      ) : (
-                        <div
-                          className="addBtn"
-                          data-id={item._id}
-                          onClick={(e) => {
-                            subCardTab(e, item);
-                          }}
-                        >
-                          <span className="addicon"></span>
-                          <span>Add a card</span>
+                              <span className="addicon"></span>
+                              <span>Add a card</span>
+                            </div>
+                          )}
                         </div>
                       )}
+                    </Droppable>
+                  ))}
+                  <div
+                    className="parent-list"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <input
+                      type="text"
+                      className="addinput"
+                      placeholder="Add another list"
+                      value={write.title}
+                      onChange={(e) => {
+                        setWrite((state) => ({
+                          ...state,
+                          title: e.target.value,
+                        }));
+                      }}
+                    />
+                    <div className="actionBox">
+                      <button className="clearbtn" onClick={pushList}>
+                        Add
+                      </button>
                     </div>
-                  )}
-                </Droppable>
-              ))}
-              <div className="parent-list">
-                <input
-                  type="text"
-                  className="addinput"
-                  placeholder="Add another list"
-                  value={write.title}
-                  onChange={(e) => {
-                    setWrite((state) => ({
-                      ...state,
-                      title: e.target.value,
-                    }));
-                  }}
-                />
-                <div className="actionBox">
-                  <button className="clearbtn" onClick={pushList}>
-                    Add
-                  </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </DragDropContext>
-        )}
-      </div>
-      {cardSwitch.modal && (
-        <DetailCard cardSwitch={cardSwitch} setCardSwitch={setCardSwitch} />
+              </DragDropContext>
+            )}
+          </div>
+          {cardSwitch.modal && (
+            <DetailCard cardSwitch={cardSwitch} setCardSwitch={setCardSwitch} />
+          )}
+        </>
       )}
     </>
   );
