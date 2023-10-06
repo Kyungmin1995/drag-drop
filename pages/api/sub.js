@@ -48,7 +48,6 @@ export default async function handler(req, res) {
         [`category.${req.body.parent}.sub.${req.body.click}.label.idx`]:
           req.body.colorData.idx,
       });
-      console.log(existingData, "dddddddd");
       if (existingData) {
         console.log("중복된 데이터가 이미 존재합니다.");
         return;
