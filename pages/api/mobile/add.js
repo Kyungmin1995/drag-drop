@@ -8,7 +8,8 @@ export default async function handler(req, res) {
       .findOne({ user: "rudals782@nate.com" });
     return res.status(200).json(result);
   }
-  console.log(req.body, "페이로드");
+  console.log(req.body, "페이로드22");
+
   const collection = db.collection("data");
   const filter = { user: "rudals782@nate.com" };
 
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
       [`category.${req.body.idx}.sub`]: {
         _id: new ObjectId().toHexString(),
         subContent: req.body.subContent,
+        star: req.body.star || false,
         label: [],
         labelList: [],
         mode: req.body.mode || false,

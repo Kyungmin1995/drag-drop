@@ -33,6 +33,16 @@ export default async function handler(req, res) {
       const result = await collection.updateOne(query, update);
       return res.status(200).json(result);
     }
+    if (req.body.api === "star") {
+      const update = {
+        $set: {
+          [`category.${req.body.parent}.sub.${req.body.clickIex}.star`]:
+            req.body.star,
+        },
+      };
+      const result = await collection.updateOne(query, update);
+      return res.status(200).json(result);
+    }
     if (req.body.api === "mode") {
       const update = {
         $set: {

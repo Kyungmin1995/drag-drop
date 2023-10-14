@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     $push: {
       [`category.${req.body.idx}.sub`]: {
         _id: new ObjectId().toHexString(),
+        star: req.body.star || false,
         subContent: req.body.subContent,
         label: [],
         labelList: [],
